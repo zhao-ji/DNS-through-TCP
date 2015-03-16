@@ -19,10 +19,13 @@ class ProxyHandler(DatagramRequestHandler):
             "query name: {}"
             .format(DNSRecord.parse(data).q.qname))
         send_data = struct.pack("!H", len(data)) + data
-        recv_data = send_tcp(send_data)[2:]
-        logbook.info(
-            "record name: {}"
-            .format(DNSRecord.parse(recv_data).a.rname))
+        recv_data = send_tcp(send_data)
+        if recv_data:
+            recv_data = recv_data[2:]
+            ip_list = "\n".join(
+                [str(r.rdata) for r in DNSRecord.parse(recv_data).rr]
+                )
+            logbook.info("record name:\n{}".format(ip_list))
         client.sendto(recv_data, self.client_address)
 
 def send_tcp(data):
@@ -34,11 +37,17 @@ def send_tcp(data):
     sock.connect((args.dns, args.dns_port))
     sock.sendall(data)
     response = sock.recv(8192)
-    length = struct.unpack("!H",bytes(response[:2]))[0]
-    while len(response) - 2 < length:
-        response += sock.recv(8192)
-    sock.close()
-    return response
+    try:
+        assert len(response) >= 2
+    except AssertionError:
+        sock.close()
+        logbook.error("ops! empty response")
+    else:
+        length = struct.unpack("!H",bytes(response[:2]))[0]
+        while len(response) - 2 < length:
+            response += sock.recv(8192)
+        sock.close()
+        return response
 
 
 if __name__ == "__main__":
