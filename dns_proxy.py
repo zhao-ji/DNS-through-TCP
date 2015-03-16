@@ -26,7 +26,7 @@ class ProxyHandler(DatagramRequestHandler):
                 [str(r.rdata) for r in DNSRecord.parse(recv_data).rr]
                 )
             logbook.info("record name:\n{}".format(ip_list))
-        client.sendto(recv_data, self.client_address)
+            client.sendto(recv_data, self.client_address)
 
 def send_tcp(data):
     """
